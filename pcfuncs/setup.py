@@ -1,20 +1,23 @@
 from setuptools import setup
 import os.path as path
 
+# Get the path to our current directory
+path_here = path.abspath(path.dirname(__file__))
+
 # Get the long description from the README file
 readme_path = path.join(path_here, "README.md")
 with open(readme_path) as readme_file:
     readme_text = readme_file.read()
 
 setup(
-    name='pc_funcs',
+    name='pcfuncs',
     version="0.0",
     author="Dr. Samuel Payne",
     author_email="sam_payne@byu.edu",
     description="Helper functions for protein complex analysis",
     long_description=readme_text,
     long_description_content_type="text/markdown",
-    url="",
+    url="https://github.com/PayneLab/ProteinComplexes_2.0/tree/master/pcfuncs",
     packages=setuptools.find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",
