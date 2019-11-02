@@ -95,6 +95,7 @@ def df_column_uniquify(df):
     return df
 
 def plot_phosphoproteomics(protein, by_patient = False, print_pvals = True, remove_duplicates = False, cancer_type = 'ov'):
+    """For a particular cancer type, plot the difference in phosphorylation levels between tumor and normal samples, for each phosphorylation site."""
     
     # Get data from the appropriate cancer type
     if cancer_type == 'ov':
@@ -625,6 +626,8 @@ def create_complex_boxplot(plot_data, complex_name, protein_list):
     boxplt.set_title(complex_name)
 
 def ttest_all_complexes(alpha = 0.05, cancer_type = None):
+    """For the specified cancer type, create a dataframe that tells you which protein complexes had significantly increased, significantly decreased, or no change in expression levels for all protein complexes."""
+
     results = pd.DataFrame(columns = ['complex_name', 'total_protein_num', 'num_increased_tumor', 
                                       'num_decreased_tumor', 'no_proteomics_data'])
     
@@ -685,12 +688,18 @@ def ttest_all_complexes(alpha = 0.05, cancer_type = None):
     return results
 
 def make_histogram(results, show_change = 'percent_increased', size_cutoffs = [10, 20], norm = False, show_complex = None):
+    """Create a stacked/overlaid histogram that displays the output of ttest_all_complexes."""
     a4_dims = (10, 10)
     fig, ax = plt.subplots(figsize=a4_dims)
     color_vals = ['skyblue', 'olive', 'gold', 'teal', 'red']
     if norm:
         if size_cutoffs is not None:
-            plot_data = list(results.loc[results['total_protein_num'] < size_cutoffs[0]][show_change])
+            # Get the column that shows the desired type of change, for the complexes with the minimum number of proteins
+            plot_data = list(results.loc[results['total_protein_num'] < size_cutoffs[0]][show_change]) 
+
+            # The following lines of code generate a different histogram for the complexes falling withing each range between the size_cutoffs
+            # x axis is bins grouping by increments of the change type we're showing (e.g. percent increase in expression)
+            # y axis is the proportion of proteins with that range of our chosen change type. But I'm not quite sure, because the proportions seem weird.
             distplot = sns.distplot(plot_data, color = color_vals[0], label = 'n < ' + str(size_cutoffs[0]), kde = False, norm_hist = True, bins = 20)
             for i in range(1, len(size_cutoffs)):
                 plot_data = results.loc[(results['total_protein_num'] >= size_cutoffs[i-1]) & (results['total_protein_num'] < size_cutoffs[i])]
@@ -698,7 +707,9 @@ def make_histogram(results, show_change = 'percent_increased', size_cutoffs = [1
                 distplot = sns.distplot(plot_data, color = color_vals[i], kde = False, norm_hist = True, label = (str(size_cutoffs[i-1]) + ' <= n < ' + str(size_cutoffs[i])), bins = 20)
             plot_data = list(results.loc[results['total_protein_num'] >= size_cutoffs[len(size_cutoffs) - 1]][show_change])
             distplot = sns.distplot(plot_data, color = color_vals[len(color_vals) - 1], kde = False, norm_hist = True, label = 'n >= ' + str(size_cutoffs[len(size_cutoffs)-1]), bins = 20)
+            distplot.set(xlabel=show_change + "expression of complex's proteins", ylabel='Frequency') # I added this
             plt.legend()
+
         else:
             plot_data = list(results[show_change])
             distplot = sns.distplot(plot_data, color = color_vals[0], kde = False, norm_hist = True, label = 'No size cutoffs')
@@ -733,7 +744,7 @@ def make_histogram(results, show_change = 'percent_increased', size_cutoffs = [1
 '''
 pancancer_boxplot
 -----------------
-Create boxplots of tumor vs normal for all proteins in a given complex for all cancer types
+Create boxplots of tumor vs normal for all proteins in a given complex, or for a list of proteins, for all cancer types
 
 '''
 def pancancer_boxplot(complex_name = None, protein_list = None, show_ttest = True):
@@ -745,6 +756,7 @@ def pancancer_boxplot(complex_name = None, protein_list = None, show_ttest = Tru
         
     proteomics_dict = get_pancancer_proteomics(protein_list)
     if show_ttest:
+        print("t test results for tumor vs. normal:")
         pancancer_ttest(complex_name, protein_list)
         
     for key, val in proteomics_dict.items():
@@ -764,6 +776,7 @@ def pancancer_boxplot(complex_name = None, protein_list = None, show_ttest = Tru
         plt.show()
 
 def pancancer_ttest(complex_name, protein_list):
+    """For a particular protein, test for a significant difference in expression between tumor and normal cells, across all cancers."""
     proteomics_dict = get_pancancer_proteomics(protein_list)
     print(complex_name + '\n')
     for key, val in proteomics_dict.items():
@@ -777,6 +790,11 @@ def pancancer_ttest(complex_name, protein_list):
         print('\n')
 
 def get_pancancer_proteomics(protein_list):
+    """For each cancer type, get the proteomics dataframe, joined with the Sample_Tumor_Normal column.
+    
+    Returns:
+    dict: Keys are cancer types, values are proteomics dataframes joined with Sample_Tumor_Normal column.
+    """
     proteomics_dict = {}
     
     with contextlib.redirect_stdout(None):
@@ -806,6 +824,8 @@ def get_pancancer_proteomics(protein_list):
     return proteomics_dict
 
 def pancancer_analyze_complex(complex_name, include_borderline = False):
+    """Determine which proteins in a complex have significantly different expression between tumor and normal samples, for all cancer types."""
+
     protein_list = subunitNames[complex_name]
     alpha = 0.05 / len(protein_list)
     if include_borderline:
@@ -869,6 +889,7 @@ def pancancer_analyze_complex(complex_name, include_borderline = False):
     return {'increased': increased_all, 'decreased': decreased_all, 'no change': no_change_all, 'mixed': mixed_results, 'missing': missing_data}
 
 def pancancer_plot_proteins(complex_name = None, protein_list = None, show_ttest = False):
+    """For a particular complex or a list of proteins, plot the difference between tumor and normal expression across all cancers, with a separate plot for each protein."""
     if complex_name:
         protein_list = subunitNames[complex_name]
     else:

@@ -19,6 +19,7 @@ setup(
     long_description_content_type="text/markdown",
     url="https://github.com/PayneLab/ProteinComplexes_2.0/tree/master/pcfuncs",
     packages=setuptools.find_packages(),
+    include_package_data=True,
     classifiers=[
         "Programming Language :: Python :: 3",
         'Intended Audience :: Science/Research',
