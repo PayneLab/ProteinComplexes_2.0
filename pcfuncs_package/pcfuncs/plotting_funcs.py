@@ -507,6 +507,7 @@ def create_complex_clinical_plot(plot_data, clinical_feature, protein_list, bin_
     countplot.set_title(complex_name, fontsize = '25')
 
 def plot_subtype_complex(raw_protein_list, complex_name = '', cancer_type = 'en', simplify_subtype = True):
+    """Plot differences in protein expression for proteasome proteins, for each sample, separated by MSI-H and MSS samples. Only implemented for colon and endometrial."""
     protein_list = []
     # Make sure all the proteins in protein_list are in the proteomics df
     for protein in raw_protein_list:
