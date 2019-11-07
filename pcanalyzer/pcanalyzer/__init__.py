@@ -9,8 +9,4 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-from .analysis_funcs import *
-from .plotting_funcs import *
-
-def init_test():
-    print("INIT")
+from .pcanalyzer import PCAnalyzer

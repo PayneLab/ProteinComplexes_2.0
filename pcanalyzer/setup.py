@@ -10,14 +10,14 @@ with open(readme_path) as readme_file:
     readme_text = readme_file.read()
 
 setup(
-    name='pcfuncs',
+    name='pcanalyzer',
     version="0.0",
     author="Dr. Samuel Payne",
     author_email="sam_payne@byu.edu",
     description="Helper functions for protein complex analysis",
     long_description=readme_text,
     long_description_content_type="text/markdown",
-    url="https://github.com/PayneLab/ProteinComplexes_2.0/tree/master/pcfuncs",
+    url="https://github.com/PayneLab/ProteinComplexes_2.0/tree/master/pcanalyzer",
     packages=setuptools.find_packages(),
     include_package_data=True,
     classifiers=[
