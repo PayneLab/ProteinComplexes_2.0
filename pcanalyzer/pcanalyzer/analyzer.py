@@ -65,4 +65,25 @@ class Analyzer:
         # For complexes with multiple entries (due to different samples), combine the lists
         member_proteins = member_proteins.groupby(member_proteins.index).agg(sum) # Sum will concatenate lists
         member_proteins = member_proteins.apply(set).apply(sorted) # Get rid of duplicates by converting to set. Then go back to list.
-        self.mp = member_proteins
+        self._member_proteins = member_proteins
+
+        # Load the ubiquitination data
+
+    def permutation_test_means(data, group_col, value_col, num_permutations):
+        """Use permutation testing to calculate a P value for the difference between the means of two groups."""
+        pass
+
+    def permutation_test_corr(data, id_col, value1_col, value2_col, num_permutations):
+        """Use permutation testing to calculate a P value for the linear correlation coefficient between two variables in several samples."""
+        pass
+
+    # "Private" functions
+    def _pair_samples(self, ds_name):
+        pass
+
+    def _get_dataset(ds_name):
+        pass
+
+    def _get_member_proteins(complex_name):
+        pass
+        

@@ -30,7 +30,7 @@ setup(
 	install_requires=[
         'cptac>=0.6.5',
 		'numpy>=1.16.3',
-		'pandas==0.25.*',
+		'pandas>=1.0.0',
 		'requests>=2.21.0',
 		'beautifulsoup4>=4.7.1',
 		'scipy>=1.2.1',
