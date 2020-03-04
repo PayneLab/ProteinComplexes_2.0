@@ -61,11 +61,11 @@ def permutation_test_corr(data, num_permutations):
         null_dist.append(perm_coef)
 
         # Keep count of how many are as or more extreme than our coefficient
-        if perm_coef >= actual_coef:
+        if abs(perm_coef) >= abs(actual_coef): # We compare the absolute values for a two-tailed test
             extreme_count += 1
 
     # Calculate the P value
-    P_val = extreme_count / num_permutations * 2
+    P_val = extreme_count / num_permutations # Don't need to multiply by 2 because we compared the absolute values of coefficients.
 
     return actual_coef, P_val, null_dist
 
