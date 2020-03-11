@@ -18,9 +18,64 @@ import seaborn as sns
 
 # Stats functions
 
-def permutation_test_means(data, group_col, value_col, num_permutations):
-    """Use permutation testing to calculate a P value for the difference between the means of two groups."""
-    pass
+def permutation_test_means(data, num_permutations, paired=False):
+    """Use permutation testing to calculate a P value for the difference between the means of two groups.
+
+    Parameters:
+    data (pandas Series or Dataframe): A series or single column dataframe containing all the data values, with a patient ID index (which indicates the tumor/normal grouping).
+    num_permutations (int): The number of permutations to perform
+    paired (bool, optional): Whether to do a paired test. Default is False.
+
+    Returns:
+    float: The P value for the null hypothesis that the two groups have the same mean.
+    """
+    # If input was a dataframe, check the shape
+    if isinstance(data, pd.DataFrame):
+        if data.shape[1] != 1:
+            raise ValueError(f"Input was a dataframe, so expected 1 column. Found {data.shape[1]}.")
+
+    # If the input was a series, make it a dataframe
+    if isinstance(data, pd.Series):
+        data = data.to_frame()
+
+    # Drop NaN values
+    data = data.dropna()
+
+    # Split into tumor/normal and extract values
+    tumor = data[~data.index.str.endswith(".N")].iloc[:, 0]
+    normal = data[data.index.str.endswith(".N")].iloc[:, 0]
+
+    # Create an independent pseudo-random number generator
+    generator = np.random.RandomState(0)
+
+    # Calculate the actual correlation coefficient
+    actual_diff = abs(np.mean(tumor) - np.mean(normal))
+
+    null_dist = []
+    extreme_count = 0
+
+    for i in range(num_permutations):
+        # Permute values
+        perm_array = generator.permutation(data.iloc[:, 0])
+
+        # Split into tumor/normal and extract values
+        perm_tumor = perm_array[~data.index.str.endswith(".N")]
+        perm_normal = perm_array[data.index.str.endswith(".N")]
+
+        # Calculate the actual correlation coefficient
+        perm_diff = abs(np.mean(perm_tumor) - np.mean(perm_normal))
+
+        # Add it to our null distribution
+        null_dist.append(perm_diff)
+
+        # Keep count of how many are as or more extreme than our coefficient
+        if perm_diff >= actual_diff: # We compare the absolute values for a two-tailed test
+            extreme_count += 1
+
+    # Calculate the P value
+    P_val = extreme_count / num_permutations # Don't need to multiply by 2 because we compared the absolute values of difference between means.
+
+    return actual_diff, P_val, null_dist
 
 def permutation_test_corr(data, num_permutations):
     """Use permutation testing to calculate a P value for the linear correlation coefficient between two variables in several samples.
@@ -30,7 +85,7 @@ def permutation_test_corr(data, num_permutations):
 
     Returns:        
     float: The linear correlation coefficient for the two variables.
-    float: The P value for the coefficient.
+    float: The P value for the null hypothesis that the correlation coefficient is zero.
     """
 
     # Check the table dimensions
