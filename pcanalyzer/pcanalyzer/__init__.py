@@ -87,26 +87,36 @@ def plot_linear_regression(data):
     # Drop NaN values
     data = data.dropna()
 
-    # Extract the values
-    var1 = data.iloc[:, 0]
-    var2 = data.iloc[:, 1]
+    # Flatten the columns if needed.
+    if data.columns.nlevels > 1:
+        tuples = data.columns.to_flat_index() # Converts multiindex to an index of tuples
+        no_nan = tuples.map(lambda x: [item for item in x if pd.notnull(item)]) # Cut any NaNs out of tuples
+        joined = no_nan.map(lambda x: '_'.join(x)) # Join each tuple
+        data.columns = joined
 
     # Get the names
-    var1_name = data.columns[0]
-    var2_name = data.columns[1]
+    var1 = data.columns[0]
+    var2 = data.columns[1]
+
+    # Create a column that marks sample type
+    sample_type_col = np.where(data.index.str.endswith(".N"), "Normal", "Tumor")
+    data.insert(2, "Sample_Type", sample_type_col)
 
     # Create the plot
     sns.set(style="darkgrid")
-    plot = sns.regplot(x = var1, y = var2)
-    plot.set(xlabel = var1_name, ylabel = var2_name, title = f"{var1_name} vs. {var2_name}")
+    plot = sns.lmplot(x=var1, y=var2, hue="Sample_Type", data=data, fit_reg=False) 
+    sns.regplot(x=var1, y=var2, data=data, scatter=False)
+    plot.set(xlabel=var1, ylabel=var2, title=f"{var1} vs. {var2}")
     plt.show()
 
 
 # Data loading functions
 
-def get_member_proteins(complex_name):
-    # Create a dictionary with protein complex names as keys and lists of included proteins as values
-    # Data downloaded from CORUM 3.0 (released 2018, http://mips.helmholtz-muenchen.de/corum/#download) 
+def get_member_proteins():
+    """Reads file from CORUM and returns a dictionary where the keys are protein complex names, and the values are lists of proteins that are members of those complexes. Data downloaded from CORUM 3.0 (released 2018, http://mips.helmholtz-muenchen.de/corum/#download)"""
+    path_here = os.path.abspath(os.path.dirname(__file__))
+    data_files_path = os.path.join(path_here, "data_files")
+
     member_proteins = pd.read_csv(os.path.join(data_files_path, 'allComplexes.txt'), sep='\t')
     member_proteins = member_proteins.loc[member_proteins['Organism'] == 'Human']
     member_proteins = member_proteins.set_index("ComplexName")
@@ -117,7 +127,10 @@ def get_member_proteins(complex_name):
     # For complexes with multiple entries (due to different samples), combine the lists
     member_proteins = member_proteins.groupby(member_proteins.index).agg(sum) # Sum will concatenate lists
     member_proteins = member_proteins.apply(set).apply(sorted) # Get rid of duplicates by converting to set. Then go back to list.
-    self._member_proteins = member_proteins
+    member_proteins = member_proteins.to_dict()
+
+    return member_proteins
+
 
 def get_ubiquitination():
     pass
