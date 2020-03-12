@@ -42,8 +42,10 @@ def permutation_test_means(data, num_permutations, paired=False):
     data = data.dropna()
 
     # Split into tumor/normal and extract values
-    tumor = data[~data.index.str.endswith(".N")].iloc[:, 0]
-    normal = data[data.index.str.endswith(".N")].iloc[:, 0]
+    tumor_selector = ~data.index.str.endswith(".N")
+    normal_selector = data.index.str.endswith(".N")
+    tumor = data[tumor_selector].iloc[:, 0]
+    normal = data[normal_selector].iloc[:, 0]
 
     # Create an independent pseudo-random number generator
     generator = np.random.RandomState(0)
@@ -59,8 +61,8 @@ def permutation_test_means(data, num_permutations, paired=False):
         perm_array = generator.permutation(data.iloc[:, 0])
 
         # Split into tumor/normal and extract values
-        perm_tumor = perm_array[~data.index.str.endswith(".N")]
-        perm_normal = perm_array[data.index.str.endswith(".N")]
+        perm_tumor = perm_array[tumor_selector]
+        perm_normal = perm_array[normal_selector]
 
         # Calculate the actual correlation coefficient
         perm_diff = abs(np.mean(perm_tumor) - np.mean(perm_normal))
