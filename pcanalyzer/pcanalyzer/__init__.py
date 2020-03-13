@@ -169,12 +169,12 @@ def plot_linear_regression(data):
 
 # Data loading functions
 
-def get_member_proteins():
+def get_corum_protein_lists():
     """Reads file from CORUM and returns a dictionary where the keys are protein complex names, and the values are lists of proteins that are members of those complexes. Data downloaded from CORUM 3.0 (released 2018, http://mips.helmholtz-muenchen.de/corum/#download)"""
     path_here = os.path.abspath(os.path.dirname(__file__))
     data_files_path = os.path.join(path_here, "data_files")
 
-    member_proteins = pd.read_csv(os.path.join(data_files_path, 'allComplexes.txt'), sep='\t')
+    member_proteins = pd.read_csv(os.path.join(data_files_path, 'corum_protein_complexes.tsv'), sep='\t')
     member_proteins = member_proteins.loc[member_proteins['Organism'] == 'Human']
     member_proteins = member_proteins.set_index("ComplexName")
 
@@ -187,6 +187,23 @@ def get_member_proteins():
     member_proteins = member_proteins.to_dict()
 
     return member_proteins
+
+def get_hgnc_protein_lists():
+    """Reads file from HGNC gene family dataset and returns a dictionary where the keys are protein complex names, and the values are lists of proteins that are members of those complexes. Data downloaded from HGNC BioMart server on 12 Mar 2020 (https://biomart.genenames.org/)."""
+    path_here = os.path.abspath(os.path.dirname(__file__))
+    data_files_path = os.path.join(path_here, "data_files")
+
+    member_proteins = pd.read_csv(os.path.join(data_files_path, 'hgnc_protein_families.tsv'), sep='\t')
+    member_proteins = member_proteins.set_index("Family name")
+    member_proteins = member_proteins["Approved symbol"]
+
+    # Combine multiple rows per family into one row with a list
+    member_proteins = member_proteins.groupby(member_proteins.index).agg(list)
+    member_proteins = member_proteins.apply(set).apply(sorted) # Get rid of duplicates by converting to set. Then go back to list.
+    member_proteins = member_proteins.to_dict()
+
+    return member_proteins
+
 
 
 def get_ubiquitination():
