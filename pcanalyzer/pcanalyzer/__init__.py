@@ -27,12 +27,14 @@ def permutation_test_means(data, num_permutations, paired=False):
     paired (bool, optional): Whether to do a paired test. Default is False.
 
     Returns:
-    float: The P value for the null hypothesis that the two groups have the same mean.
+    float: The difference between the means
+    float: The P value for the null hypothesis that the two groups have the same mean
+    list of float: The generated null distribution for the difference between the means
     """
     # If input was a dataframe, check the shape
     if isinstance(data, pd.DataFrame):
         if data.shape[1] != 1:
-            raise ValueError(f"Input was a dataframe, so expected 1 column. Found {data.shape[1]}.")
+            raise ValueError(f"Input was a dataframe, so expected 1 column. Found {data.shape[1]}:\n{data}.")
 
     # If the input was a series, make it a dataframe
     if isinstance(data, pd.Series):
@@ -78,6 +80,51 @@ def permutation_test_means(data, num_permutations, paired=False):
     P_val = extreme_count / num_permutations # Don't need to multiply by 2 because we compared the absolute values of difference between means.
 
     return actual_diff, P_val, null_dist
+
+def perm_test_omics_pancancer(datasets, id_list, data_type, num_permutations, paired = False):
+    """Use permutation testing to calculate a P value for the difference between the means of tumor and normal sample omics for multiple datasets.
+
+    Parameters:
+    datasets (list of cptac.DataSet): A list of instantiations of the datasets we want to do the testing for
+    id_list (list of str): A list of the IDs (e.g. protein names) to select for the test
+    data_type (str): The type of omics data to do the testing on. Currently supported: proteomics
+    num_permutations (int): The number of permutations to perform
+    paired (bool, optional): Whether to do a paired test. Default is False.
+
+    Returns:
+    dict of str: tuple of str, int: A dictionary where:
+        the keys are the names of the datasets analyzed, and
+        the values are tuples where 
+            the first value is the ID for the column that was tested, and
+            the second value is the raw P value for the difference between the means of the tumor and normal groups in that column. 
+        These P values are not adjusted. Make sure that you do multiple testing correction.
+    int: The number of tests performed, to help with multiple testing correction calculations.
+    """
+    results = {}
+    num_tests = 0
+
+    for dataset in datasets:
+        
+        dataset_name = dataset.get_cancer_type()
+        results[dataset_name] = []
+
+        if data_type == "proteomics":
+            omics = dataset.get_proteomics()
+        else:
+            raise ValueError(f"Unsupported data type {data_type}. See docstring for supported types.")
+
+        included_cols = (omics.columns.get_level_values(0) & id_list).drop_duplicates()
+        selected_omics = omics[included_cols]
+        
+        for id in selected_omics.columns:
+            
+            data = selected_omics[id]
+            diff, P_val, null_dist = permutation_test_means(data, num_permutations)
+            num_tests += 1
+
+            results[dataset_name].append((id, P_val))
+
+    return results, num_tests
 
 def permutation_test_corr(data, num_permutations):
     """Use permutation testing to calculate a P value for the linear correlation coefficient between two variables in several samples.
