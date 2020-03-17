@@ -5,4 +5,4 @@
 #SBATCH --nodes=1   # number of nodes
 #SBATCH --mem-per-cpu=4096M   # memory per CPU core
 
-jupyter nbconvert --ExecutePreprocessor.timeout=None --to notebook --execute proteasome_all.ipynb
+jupyter nbconvert --ExecutePreprocessor.timeout=None --to notebook --inplace --execute proteasome_all.ipynb
