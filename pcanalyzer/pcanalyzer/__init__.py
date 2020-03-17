@@ -53,7 +53,8 @@ def permutation_test_means(data, num_permutations, paired=False):
     generator = np.random.RandomState(0)
 
     # Calculate the actual correlation coefficient
-    actual_diff = abs(np.mean(tumor) - np.mean(normal))
+    actual_diff = np.mean(tumor) - np.mean(normal)
+    abs_actual_diff = abs(actual_diff)
 
     null_dist = []
     extreme_count = 0
@@ -73,7 +74,7 @@ def permutation_test_means(data, num_permutations, paired=False):
         null_dist.append(perm_diff)
 
         # Keep count of how many are as or more extreme than our coefficient
-        if perm_diff >= actual_diff: # We compare the absolute values for a two-tailed test
+        if perm_diff >= abs_actual_diff: # We compare the absolute values for a two-tailed test
             extreme_count += 1
 
     # Calculate the P value
@@ -92,12 +93,13 @@ def perm_test_omics_pancancer(datasets, id_list, data_type, num_permutations, pa
     paired (bool, optional): Whether to do a paired test. Default is False.
 
     Returns:
-    dict of str: tuple of str, int: A dictionary where:
+    dict of str: pandas.DataFrame: A dictionary where:
         the keys are the names of the datasets analyzed, and
-        the values are tuples where 
-            the first value is the ID for the column that was tested, and
-            the second value is the raw P value for the difference between the means of the tumor and normal groups in that column. 
-        These P values are not adjusted. Make sure that you do multiple testing correction.
+        the values are dataframes where
+            the index contains the IDs for the data arrays that were tested
+            the first column is the difference between the means of tumor and normal for that array, and
+            the second column is the raw P value for the difference between the means of the tumor and normal groups in that array.
+        The P values are not adjusted. Make sure that you do multiple testing correction.
     int: The number of tests performed, to help with multiple testing correction calculations.
     """
     results = {}
@@ -105,8 +107,9 @@ def perm_test_omics_pancancer(datasets, id_list, data_type, num_permutations, pa
 
     for dataset in datasets:
         
-        dataset_name = dataset.get_cancer_type()
-        results[dataset_name] = []
+        ids = []
+        diffs = []
+        P_vals = []
 
         if data_type == "proteomics":
             omics = dataset.get_proteomics()
@@ -122,7 +125,12 @@ def perm_test_omics_pancancer(datasets, id_list, data_type, num_permutations, pa
             diff, P_val, null_dist = permutation_test_means(data, num_permutations)
             num_tests += 1
 
-            results[dataset_name].append((id, P_val))
+            ids.append(id)
+            diffs.append(diff)
+            P_vals.append(P_val)
+
+        dataset_results = pd.DataFrame({"diff": diffs, "P_val": P_vals}, index=ids)
+        results[dataset.get_cancer_type()] = dataset_results
 
     return results, num_tests
 
@@ -175,14 +183,14 @@ def permutation_test_corr(data, num_permutations):
 
 # Plotting functions
 
-def plot_linear_regression(data):
+def linear_regplot(data):
     """Plot two variables against each other and show the linear regression line.
 
     Parameters:
     data (pandas DataFrame): A dataframe where the rows are samples, and the columns are the two variables we're testing correlation between.
 
     Returns:        
-
+    None
     """
     # Check the table dimensions
     if data.shape[1] != 2:
@@ -204,15 +212,79 @@ def plot_linear_regression(data):
 
     # Create a column that marks sample type
     sample_type_col = np.where(data.index.str.endswith(".N"), "Normal", "Tumor")
-    data.insert(2, "Sample_Type", sample_type_col)
+    data.insert(2, "Sample_Tumor_Normal", sample_type_col)
 
     # Create the plot
     sns.set(style="darkgrid")
-    plot = sns.lmplot(x=var1, y=var2, hue="Sample_Type", data=data, fit_reg=False) 
+    plot = sns.lmplot(x=var1, y=var2, hue="Sample_Tumor_Normal", data=data, fit_reg=False) 
     sns.regplot(x=var1, y=var2, data=data, scatter=False)
     plot.set(xlabel=var1, ylabel=var2, title=f"{var1} vs. {var2}")
     plt.show()
 
+def boxplot_omics_tumor_normal(dataset, data_type, ids=None, separated_ids=None, dims=(12, 8)):
+    """Plot omics data boxplots for tumor vs. normal.
+
+    Parameters:
+    dataset (cptac.DataSet): The dataset object to plot the data for
+    data_type (str): The type of omics data to plot. Currently supported: proteomics
+    ids (list of str, optional): A list of the identifiers (e.g. proteins) to plot data for. Either ids or separated_ids parameter, but not both, must be provided.
+    separated_ids (list of list of str, optional): List of groups of identifiers to plot data for. Groups will be plotted with whitespace between groups. Supports exactly two groups. Either ids or separated_ids parameter, but not both, must be provided.
+    dims (tuple of int, int, optional): A tuple containing the dimensions for the plot, passed to figsize argument in plt.figure(). Defaults to (12, 8)
+
+    Returns:
+    None
+    """
+    if separated_ids is not None:
+        if ids is not None:
+            raise ValueError("ids and separated_ids parameters cannot both not be None.")
+        if len(separated_ids) > 2:
+            raise ValueError(f"boxplot_omics_tumor_normal does not support more than two separated groups. You passed {len(separated_ids)}:\n{separated_ids}")
+
+        ids = separated_ids[0] + separated_ids[1]
+    elif ids is not None:
+        pass
+    else:
+        raise ValueError("ids and separated_ids cannot both be not None.")
+
+    if data_type == "proteomics":
+        omics = dataset.get_proteomics()
+    else:
+        raise ValueError(f"Unsupported data type {data_type}. See docstring for supported types.")
+
+    included_cols = (pd.Series(ids)[pd.Series(ids).isin(omics.columns)]).drop_duplicates()
+    selected_omics = omics[included_cols] # Note that if the ids list was constructed from separated_ids lists, we will have selected the columns in the desired order
+
+    # Flatten the columns if needed
+    if selected_omics.columns.nlevels > 1:
+        #selected_omics.columns = flatten_idx_differentiate_duplicates(selected_omics.columns)
+        tuples = selected_omics.columns.to_flat_index() # Converts multiindex to an index of tuples
+        no_nan = tuples.map(lambda x: [item for item in x if pd.notnull(item)]) # Cut any NaNs out of tuples
+        joined = no_nan.map(lambda x: '_'.join(x)) # Join each tuple
+        selected_omics.columns = joined
+
+    if separated_ids is not None:
+        selected_omics.insert(len(separated_ids[0]), "", np.nan) # Plotting the column of nothing between the two groups will separate them visually
+
+    # Grab the order of the columns so we can pass it to order them that way in the plot
+    plot_order = selected_omics.columns
+
+    # Create a column that marks sample type
+    sample_type_col = np.where(selected_omics.index.str.endswith(".N"), "Normal", "Tumor")
+    selected_omics = selected_omics.assign(**{"Sample_Tumor_Normal": sample_type_col})
+
+    # Unpivot the selected_omicsframe (similar to a tidyr gather) so it works with Seaborn
+    selected_omics = pd.melt(selected_omics, id_vars="Sample_Tumor_Normal", var_name="id", value_name="omics")
+
+    # Create the plot
+    sns.set(style="darkgrid")
+
+    plt.figure(figsize=dims)
+    boxplt = sns.boxplot(data=selected_omics, x='id', y='omics', hue='Sample_Tumor_Normal', order=plot_order, showfliers=False)
+    boxplt.set_title(dataset.get_cancer_type())
+    boxplt.set_ylabel('omics')
+    boxplt.set_xlabel('')
+    boxplt.set_xticklabels(boxplt.get_xticklabels(), rotation=45)
+    plt.show()
 
 # Data loading functions
 
@@ -255,3 +327,15 @@ def get_hgnc_protein_lists():
 
 def get_ubiquitination():
     pass
+
+# Helper functions
+
+def flatten_idx_differentiate_duplicates(idx):
+    """Flattens a pandas.MultiIndex, dropping level values unless they're needed to differentiate duplicates, in which case it concatenates level values into a string with underscore separators.
+
+    Parameters:
+    idx (pandas.MultiIndex): The index to flatten.
+
+    Returns:
+    pandas.Index: The flattened index.
+    """
