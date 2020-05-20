@@ -339,3 +339,4 @@ def flatten_idx_differentiate_duplicates(idx):
     Returns:
     pandas.Index: The flattened index.
     """
+    pass
