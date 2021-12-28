@@ -82,7 +82,7 @@ def permutation_test_means(data, num_permutations, paired=False):
 
     return actual_diff, P_val, null_dist
 
-def perm_test_omics_pancancer(datasets, id_list, data_type, num_permutations, paired = False):
+def perm_test_omics_pancancer(datasets, id_list, data_type, num_permutations, paired=False):
     """Use permutation testing to calculate a P value for the difference between the means of tumor and normal sample omics for multiple datasets.
 
     Parameters:
